@@ -39,3 +39,25 @@
 
 # debug information files
 *.dwo
+
+# Projekt libdwarfParser
+dwarf_reader
+build/
+build-*/
+cmake-build-*/
+
+# Pliki IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Pliki CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile.cmake
+
+# Pliki debugowania
+*.dSYM/
