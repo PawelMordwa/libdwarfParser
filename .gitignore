@@ -46,6 +46,9 @@ build/
 build-*/
 cmake-build-*/
 
+# FetchContent - pobrane zależności
+_deps/
+
 # Pliki IDE
 .vscode/
 .idea/

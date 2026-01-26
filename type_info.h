@@ -1,8 +1,8 @@
 #ifndef TYPE_INFO_H
 #define TYPE_INFO_H
 
-#include <libdwarf-0/dwarf.h>
-#include <libdwarf-0/libdwarf.h>
+#include <dwarf.h>
+#include <libdwarf.h>
 
 #include <string>
 

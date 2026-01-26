@@ -1,8 +1,8 @@
 #ifndef TYPE_CACHE_H
 #define TYPE_CACHE_H
 
-#include <libdwarf-0/dwarf.h>
-#include <libdwarf-0/libdwarf.h>
+#include <dwarf.h>
+#include <libdwarf.h>
 
 #include <cstdint>
 #include <map>

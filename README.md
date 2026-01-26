@@ -20,15 +20,17 @@ Parser informacji DWARF z plików ELF, specjalnie zoptymalizowany dla procesoró
 
 - Kompilator C++ z obsługą C++11 lub nowszego (g++, clang++, MSVC)
 - CMake 3.10 lub nowszy
-- libdwarf (wersja 0.11.1 lub nowsza)
+- Połączenie z internetem (do pobrania libdwarf podczas pierwszej kompilacji)
+
+**Uwaga:** libdwarf jest automatycznie pobierany i budowany przez CMake - nie musisz go instalować ręcznie!
 
 ### Linux
 ```bash
 # Debian/Ubuntu
-sudo apt install cmake libdwarf-dev
+sudo apt install cmake build-essential
 
 # Fedora
-sudo dnf install cmake libdwarf-devel
+sudo dnf install cmake gcc-c++
 ```
 
 ### Windows
