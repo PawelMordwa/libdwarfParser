@@ -5,7 +5,7 @@
 
 FileDescriptor::FileDescriptor(const std::string& path)
 {
-	fd = open(path.c_str(), O_RDONLY);
+	fd = open(path.c_str(), O_RDONLY | O_BINARY);
 	if (fd < 0)
 	{
 		throw std::runtime_error("Nie można otworzyć pliku: " + path);
