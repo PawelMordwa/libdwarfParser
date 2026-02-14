@@ -8,6 +8,7 @@
 #include "file_descriptor.h"
 #include "type_cache.h"
 #include "type_info.h"
+#include "variable_info.h"
 
 int main(int argc, char** argv)
 {
@@ -96,6 +97,9 @@ int main(int argc, char** argv)
 		type_signature_cache.clear();
 
 		dwarf_finish(dbg);
+
+		// Wyświetl zebrane dane po zakończeniu parsowania
+		print_all_variables();
 	}
 	catch (const std::exception& e)
 	{

@@ -60,8 +60,21 @@ void build_type_signature_cache(Dwarf_Debug dbg)
 		{
 			// Zapisz w cache: sygnatura -> DIE
 			uint64_t sig_key = sig8_to_uint64(type_signature);
+
+			// Sprawdź czy sygnatura już istnieje w cache
+			auto existing = type_signature_cache.find(sig_key);
+			if (existing != type_signature_cache.end())
+			{
+				// Sygnatura już istnieje - nie nadpisuj!
+				// Zwolnij duplikat i pomiń
+				dwarf_dealloc(dbg, type_die, DW_DLA_DIE);
+				current_cu_offset = next_cu_header;
+				continue;
+			}
+
 			type_signature_cache[sig_key] = type_die;
 			loaded_count++;
+
 			// Debug: wyświetl informacje o typie (tylko pierwsze 10 dla czytelności)
 			if (loaded_count <= 10 || loaded_count % 20 == 0)
 			{

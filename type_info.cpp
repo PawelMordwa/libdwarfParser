@@ -187,6 +187,7 @@ Dwarf_Unsigned get_type_size(Dwarf_Debug dbg, Dwarf_Die type_die, bool& found,
 		if (dwarf_attr(current_die, DW_AT_byte_size, &size_attr, &err) ==
 			DW_DLV_OK)
 		{
+			// Spróbuj najpierw dwarf_formudata
 			if (dwarf_formudata(size_attr, &size, &err) == DW_DLV_OK)
 			{
 				found = true;
@@ -195,6 +196,25 @@ Dwarf_Unsigned get_type_size(Dwarf_Debug dbg, Dwarf_Die type_die, bool& found,
 					dwarf_dealloc(dbg, current_die, DW_DLA_DIE);
 				}
 				return size;
+			}
+
+			// Jeśli dwarf_formudata nie zadziałało, spróbuj jako blok
+			Dwarf_Block* size_block;
+			if (dwarf_formblock(size_attr, &size_block, &err) == DW_DLV_OK)
+			{
+				// Blok może zawierać prostą wartość
+				if (size_block->bl_len >= 1)
+				{
+					auto* data = reinterpret_cast<unsigned char*>(size_block->bl_data);
+					// Dla małych rozmiarów (< 128) to będzie pojedynczy bajt
+					size = data[0];
+					found = true;
+					if (should_dealloc)
+					{
+						dwarf_dealloc(dbg, current_die, DW_DLA_DIE);
+					}
+					return size;
+				}
 			}
 		}
 
@@ -430,4 +450,164 @@ void print_type_info(Dwarf_Debug dbg, Dwarf_Die variable_die)
 	{
 		std::cout << " | Typ: (brak atrybutu)";
 	}
+}
+
+// Nowa funkcja pomocnicza - zwraca pełną nazwę typu jako string
+std::string get_full_type_info(Dwarf_Debug dbg, Dwarf_Die variable_die)
+{
+	Dwarf_Error err;
+	Dwarf_Attribute type_attr;
+
+	if (dwarf_attr(variable_die, DW_AT_type, &type_attr, &err) == DW_DLV_OK)
+	{
+		Dwarf_Half form;
+		if (dwarf_whatform(type_attr, &form, &err) == DW_DLV_OK)
+		{
+			Dwarf_Die type_die = nullptr;
+			Dwarf_Off offset = 0;
+			Dwarf_Bool is_info = true;
+			int res = DW_DLV_ERROR;
+
+			// Obsługa różnych form referencji
+			switch (form)
+			{
+				case DW_FORM_ref1:
+				case DW_FORM_ref2:
+				case DW_FORM_ref4:
+				case DW_FORM_ref8:
+				case DW_FORM_ref_udata:
+					// Lokalna referencja
+					res = dwarf_formref(type_attr, &offset, &is_info, &err);
+					break;
+
+				case DW_FORM_ref_addr:
+					// Globalna referencja
+					res = dwarf_global_formref(type_attr, &offset, &err);
+					is_info = true;
+					break;
+
+				case DW_FORM_ref_sig8:
+					// Sygnatura typu - używane przez TI CGT dla C2000
+					{
+						Dwarf_Sig8 signature;
+						if (dwarf_formsig8(type_attr, &signature, &err) == DW_DLV_OK)
+						{
+							uint64_t sig_key = sig8_to_uint64(signature);
+							auto it = type_signature_cache.find(sig_key);
+							if (it != type_signature_cache.end())
+							{
+								type_die = it->second;
+								std::string type_name = get_type_name(dbg, type_die, true);
+								// NIE zwalniaj type_die - jest w cache!
+								return type_name;
+							}
+						}
+						return "(nieznany - brak w cache)";
+					}
+
+				default:
+					// Inne formy - spróbuj uniwersalnie
+					res = dwarf_formref(type_attr, &offset, &is_info, &err);
+					if (res != DW_DLV_OK)
+					{
+						res = dwarf_global_formref(type_attr, &offset, &err);
+						if (res == DW_DLV_OK)
+							is_info = true;
+					}
+					break;
+			}
+
+			if (res == DW_DLV_OK)
+			{
+				if (dwarf_offdie_b(dbg, offset, is_info, &type_die, &err) == DW_DLV_OK)
+				{
+					std::string type_name = get_type_name(dbg, type_die);
+					dwarf_dealloc(dbg, type_die, DW_DLA_DIE);
+					return type_name;
+				}
+			}
+		}
+	}
+	return "(nieznany)";
+}
+
+// Nowa funkcja pomocnicza - zwraca rozmiar typu (uproszczona)
+uint64_t get_type_size_simple(Dwarf_Debug dbg, Dwarf_Die variable_die)
+{
+	Dwarf_Error err;
+	Dwarf_Attribute type_attr;
+
+	if (dwarf_attr(variable_die, DW_AT_type, &type_attr, &err) == DW_DLV_OK)
+	{
+		Dwarf_Half form;
+		if (dwarf_whatform(type_attr, &form, &err) == DW_DLV_OK)
+		{
+			Dwarf_Die type_die = nullptr;
+			Dwarf_Off offset = 0;
+			Dwarf_Bool is_info = true;
+			int res = DW_DLV_ERROR;
+
+			// Obsługa różnych form referencji
+			switch (form)
+			{
+				case DW_FORM_ref1:
+				case DW_FORM_ref2:
+				case DW_FORM_ref4:
+				case DW_FORM_ref8:
+				case DW_FORM_ref_udata:
+					// Lokalna referencja
+					res = dwarf_formref(type_attr, &offset, &is_info, &err);
+					break;
+
+				case DW_FORM_ref_addr:
+					// Globalna referencja
+					res = dwarf_global_formref(type_attr, &offset, &err);
+					is_info = true;
+					break;
+
+				case DW_FORM_ref_sig8:
+					// Sygnatura typu - używane przez TI CGT dla C2000
+					{
+						Dwarf_Sig8 signature;
+						if (dwarf_formsig8(type_attr, &signature, &err) == DW_DLV_OK)
+						{
+							uint64_t sig_key = sig8_to_uint64(signature);
+							auto it = type_signature_cache.find(sig_key);
+							if (it != type_signature_cache.end())
+							{
+								type_die = it->second;
+								bool found = false;
+								Dwarf_Unsigned size = get_type_size(dbg, type_die, found, true);
+								// NIE zwalniaj type_die - jest w cache!
+								return found ? size : 0;
+							}
+						}
+						return 0;
+					}
+
+				default:
+					// Inne formy - spróbuj uniwersalnie
+					res = dwarf_formref(type_attr, &offset, &is_info, &err);
+					if (res != DW_DLV_OK)
+					{
+						res = dwarf_global_formref(type_attr, &offset, &err);
+						if (res == DW_DLV_OK)
+							is_info = true;
+					}
+					break;
+			}
+
+			if (res == DW_DLV_OK)
+			{
+				if (dwarf_offdie_b(dbg, offset, is_info, &type_die, &err) == DW_DLV_OK)
+				{
+					bool found = false;
+					Dwarf_Unsigned size = get_type_size(dbg, type_die, found);
+					dwarf_dealloc(dbg, type_die, DW_DLA_DIE);
+					return found ? size : 0;
+				}
+			}
+		}
+	}
+	return 0;
 }

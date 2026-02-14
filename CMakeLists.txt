@@ -42,6 +42,7 @@ set(SOURCES
     type_cache.cpp
     type_info.cpp
     die_processor.cpp
+    variable_info.cpp
 )
 
 # Pliki nagłówkowe
@@ -51,6 +52,7 @@ set(HEADERS
     type_cache.h
     type_info.h
     die_processor.h
+    variable_info.h
 )
 
 # Tworzenie executable
